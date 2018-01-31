@@ -149,6 +149,18 @@ export default class Slider extends PureComponent {
     thumbImage: Image.propTypes.source,
 
     /**
+     * The style applied to the left side of track
+    */
+    minimumTrackStyle: PropTypes.shape(
+      {height: PropTypes.number, opacity: PropTypes.number, top: PropTypes.number}),
+ 
+    /**
+     * The style applied to the right side of track
+    */
+    maximumTrackStyle: PropTypes.shape(
+      {height: PropTypes.number, opacity: PropTypes.number}),
+ 
+    /**
      * Set this to true to visually see the thumb touch rect in green.
      */
     debugTouchArea: PropTypes.bool,
@@ -178,6 +190,8 @@ export default class Slider extends PureComponent {
     maximumTrackTintColor: '#b3b3b3',
     thumbTintColor: '#343434',
     thumbTouchSize: {width: 40, height: 40},
+    minimumTrackStyle: {height: 10, opacity: 1, top: 0},
+    maximumTrackStyle: {height: 10, opacity: 1},
     debugTouchArea: false,
     animationType: 'timing'
   };
@@ -227,6 +241,8 @@ export default class Slider extends PureComponent {
       style,
       trackStyle,
       thumbStyle,
+      minimumTrackStyle,
+      maximumTrackStyle,
       debugTouchArea,
       ...other
     } = this.props;
@@ -237,26 +253,54 @@ export default class Slider extends PureComponent {
       outputRange: [0, containerSize.width - thumbSize.width],
       //extrapolate: 'clamp',
     });
+    var thumbRight = value.interpolate({
+      inputRange: [minimumValue, maximumValue],
+      outputRange: [containerSize.width - thumbSize.width, 0]
+    })
     var valueVisibleStyle = {};
     if (!allMeasured) {
       valueVisibleStyle.opacity = 0;
+    }
+
+    var leftCustomValueStyle = {
+        height: minimumTrackStyle.height,
+        opacity: minimumTrackStyle.opacity,
+        top: minimumTrackStyle.top
+    }
+
+    var rightCustomValueStyle = {
+        height: maximumTrackStyle.height,
+        opacity: maximumTrackStyle.opacity
     }
 
     var minimumTrackStyle = {
       position: 'absolute',
       width: Animated.add(thumbLeft, thumbSize.width / 2),
       backgroundColor: minimumTrackTintColor,
-      ...valueVisibleStyle
+      ...valueVisibleStyle,
+      ...minimumTrackStyle
     };
+
+    var maximumTrackStyle = {
+        position: 'absolute',
+        width: Animated.add(thumbRight, thumbSize.width / 2),
+        backgroundColor: maximumTrackTintColor,
+        ...rightCustomValueStyle
+    }
 
     var touchOverflowStyle = this._getTouchOverflowStyle();
 
     return (
+    
       <View {...other} style={[mainStyles.container, style]} onLayout={this._measureContainer}>
-        <View
-          style={[{backgroundColor: maximumTrackTintColor,}, mainStyles.track, trackStyle]}
-          renderToHardwareTextureAndroid={true}
-          onLayout={this._measureTrack} />
+        <View style={[defaultStyles.customBackground]}>
+        </View>
+       <View style={[defaultStyles.rightTrackDownView]}>
+            <Animated.View
+                renderToHardwareTextureAndroid={true}
+                style={[mainStyles.track, trackStyle, maximumTrackStyle]}
+                onLayout={this._measureTrack} />
+        </View>
         <Animated.View
           renderToHardwareTextureAndroid={true}
           style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
@@ -295,6 +339,7 @@ export default class Slider extends PureComponent {
       onSlidingComplete,
       style,
       trackStyle,
+      maximumTrackStyle,
       thumbStyle,
       ...otherProps,
     } = props;
@@ -516,13 +561,13 @@ var defaultStyles = StyleSheet.create({
   },
   track: {
     height: TRACK_SIZE,
-    borderRadius: TRACK_SIZE / 2,
+  //  borderRadius: TRACK_SIZE / 2,
   },
   thumb: {
     position: 'absolute',
     width: THUMB_SIZE,
     height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
+  //  borderRadius: THUMB_SIZE / 2,
   },
   touchArea: {
     position: 'absolute',
@@ -536,5 +581,15 @@ var defaultStyles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'green',
     opacity: 0.5,
+  },
+  rightTrackDownView: {
+    flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "flex-end"
+  },
+  customBackground: {
+    height: 30, 
+    top: 10,
+    backgroundColor: "#F0F2F5" 
   }
 });

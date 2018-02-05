@@ -26,22 +26,22 @@ function Rect(x, y, width, height) {
   this.height = height;
 }
 
-Rect.prototype.containsPoint = function(x, y) {
+Rect.prototype.containsPoint = function (x, y) {
   return (x >= this.x
-          && y >= this.y
-          && x <= this.x + this.width
-          && y <= this.y + this.height);
+    && y >= this.y
+    && x <= this.x + this.width
+    && y <= this.y + this.height);
 };
 
 var DEFAULT_ANIMATION_CONFIGS = {
-  spring : {
-    friction : 7,
-    tension  : 100
+  spring: {
+    friction: 7,
+    tension: 100
   },
-  timing : {
-    duration : 150,
-    easing   : Easing.inOut(Easing.ease),
-    delay    : 0
+  timing: {
+    duration: 150,
+    easing: Easing.inOut(Easing.ease),
+    delay: 0
   },
   // decay : { // This has a serious bug
   //   velocity     : 1,
@@ -108,7 +108,7 @@ export default class Slider extends PureComponent {
      * The default is {width: 40, height: 40}.
      */
     thumbTouchSize: PropTypes.shape(
-      {width: PropTypes.number, height: PropTypes.number}
+      { width: PropTypes.number, height: PropTypes.number }
     ),
 
     /**
@@ -156,17 +156,36 @@ export default class Slider extends PureComponent {
     /**
      * Set to true to animate values with default 'timing' animation type
      */
-    animateTransitions : PropTypes.bool,
+    animateTransitions: PropTypes.bool,
 
     /**
      * Custom Animation type. 'spring' or 'timing'.
      */
-    animationType : PropTypes.oneOf(['spring', 'timing']),
+    animationType: PropTypes.oneOf(['spring', 'timing']),
 
     /**
      * Used to configure the animation parameters.  These are the same parameters in the Animated library.
      */
-    animationConfig : PropTypes.object,
+    animationConfig: PropTypes.object,
+
+    isCustomMinMaxStyle: PropTypes.shape({
+      isVisible: PropTypes.bool,
+      minStyle: PropTypes.shape({
+        height: PropTypes.number,
+        opacity: PropTypes.number
+      }),
+      maxStyle: PropTypes.shape({
+        height: PropTypes.number,
+        opacity: PropTypes.number
+      })
+    }),
+    isCustomDisableValue: PropTypes.shape({
+      isVisible: PropTypes.bool,
+      thumbCustomValue: PropTypes.shape({
+        width: PropTypes.number,
+        height: PropTypes.number,
+      })
+    })
   };
 
   static defaultProps = {
@@ -177,15 +196,33 @@ export default class Slider extends PureComponent {
     minimumTrackTintColor: '#3f3f3f',
     maximumTrackTintColor: '#b3b3b3',
     thumbTintColor: '#343434',
-    thumbTouchSize: {width: 40, height: 40},
+    thumbTouchSize: { width: 40, height: 40 },
     debugTouchArea: false,
-    animationType: 'timing'
+    animationType: 'timing',
+    isCustomMinMaxStyle: {
+      isVisible: false,
+      minStyle: {
+        height: 20,
+        opacity: 1
+      },
+      maxStyle: {
+        height: 30,
+        opacity: 1
+      }
+    },
+    isCustomDisableValue: {
+      isVisible: false,
+      thumbCustomValue: {
+        width: 10,
+        height: 10,
+      }
+    }
   };
 
   state = {
-    containerSize: {width: 0, height: 0},
-    trackSize: {width: 0, height: 0},
-    thumbSize: {width: 0, height: 0},
+    containerSize: { width: 0, height: 0 },
+    trackSize: { width: 0, height: 0 },
+    thumbSize: { width: 0, height: 0 },
     allMeasured: false,
     value: new Animated.Value(this.props.value),
   };
@@ -228,15 +265,21 @@ export default class Slider extends PureComponent {
       trackStyle,
       thumbStyle,
       debugTouchArea,
+      isCustomMinMaxStyle,
+      isCustomDisableValue,
       ...other
     } = this.props;
-    var {value, containerSize, trackSize, thumbSize, allMeasured} = this.state;
+    var { value, containerSize, trackSize, thumbSize, allMeasured } = this.state;
     var mainStyles = styles || defaultStyles;
     var thumbLeft = value.interpolate({
       inputRange: [minimumValue, maximumValue],
       outputRange: [0, containerSize.width - thumbSize.width],
       //extrapolate: 'clamp',
     });
+    var thumbRight = value.interpolate({
+      inputRange: [minimumValue, maximumValue],
+      outputRange: [containerSize.width - thumbSize.width, 0]
+    })
     var valueVisibleStyle = {};
     if (!allMeasured) {
       valueVisibleStyle.opacity = 0;
@@ -251,20 +294,97 @@ export default class Slider extends PureComponent {
 
     var touchOverflowStyle = this._getTouchOverflowStyle();
 
+    var visibility = null
+
+    var rightCustom = {
+      height: isCustomMinMaxStyle.maxStyle.height || 20,
+      opacity: isCustomMinMaxStyle.maxStyle.opacity || 1
+    }
+    var leftCustom = {
+      height: isCustomMinMaxStyle.minStyle.height || 20,
+      opacity: isCustomMinMaxStyle.minStyle.opacity || 1,
+      top: 28
+    }
+
+    var isCustomMinMaxStyle = {
+      isVisible: isCustomMinMaxStyle.isVisible || false,
+      minStyle: {
+        position: 'absolute',
+        width: Animated.add(thumbLeft, thumbSize.width / 2),
+        backgroundColor: minimumTrackTintColor,
+        ...leftCustom
+      },
+      maxStyle: {
+        position: 'absolute',
+        width: Animated.add(thumbRight, thumbSize.width / 2),
+        backgroundColor: maximumTrackTintColor,
+        ...rightCustom
+      }
+    }
+
+    var isCustomDisableValue = {
+      isVisible: isCustomDisableValue.isVisible || false,
+      thumbCustomValue: {
+        width: isCustomDisableValue.thumbCustomValue.width || 10,
+        height: isCustomDisableValue.thumbCustomValue.height || 10,
+      }
+    }
+
+    if (isCustomMinMaxStyle.isVisible) {
+      visibility = (
+        <View>
+          <View style={[defaultStyles.customBackground]} />
+          <View style={[defaultStyles.rightTrackDownView]}>
+            <Animated.View
+              renderToHardwareTextureAndroid={true}
+              style={[mainStyles.trackCustom, trackStyle, isCustomMinMaxStyle.maxStyle]}
+              onLayout={this._measureTrack} />
+          </View>
+          <Animated.View
+            renderToHardwareTextureAndroid={true}
+            style={[mainStyles.trackCustom, trackStyle, isCustomMinMaxStyle.minStyle]} />
+        </View>
+      )
+    } else if (isCustomDisableValue.isVisible) {
+      visibility = (
+        <View>
+          <View
+            style={[{ backgroundColor: maximumTrackTintColor, }, mainStyles.track, trackStyle]}
+            renderToHardwareTextureAndroid={true}
+            onLayout={this._measureTrack} />
+          <Animated.View
+            renderToHardwareTextureAndroid={true}
+            style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
+          <View
+            onLayout={this._measureThumb}
+            renderToHardwareTextureAndroid={true}
+            style={[{ backgroundColor: "#000" }, mainStyles.thumb, thumbStyle, isCustomDisableValue.thumbCustomValue]} />
+        </View>
+      )
+    } else {
+      visibility = (
+        <View>
+          <View
+            style={[{ backgroundColor: maximumTrackTintColor, }, mainStyles.track, trackStyle]}
+            renderToHardwareTextureAndroid={true}
+            onLayout={this._measureTrack} />
+          <Animated.View
+            renderToHardwareTextureAndroid={true}
+            style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
+        </View>
+      )
+    }
+
     return (
       <View {...other} style={[mainStyles.container, style]} onLayout={this._measureContainer}>
-        <View
-          style={[{backgroundColor: maximumTrackTintColor,}, mainStyles.track, trackStyle]}
-          renderToHardwareTextureAndroid={true}
-          onLayout={this._measureTrack} />
-        <Animated.View
-          renderToHardwareTextureAndroid={true}
-          style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
+
+        {visibility}
+
         <Animated.View
           onLayout={this._measureThumb}
           renderToHardwareTextureAndroid={true}
           style={[
-            {backgroundColor: thumbTintColor},
+            { backgroundColor: thumbTintColor },
             mainStyles.thumb, thumbStyle,
             {
               transform: [
@@ -353,8 +473,8 @@ export default class Slider extends PureComponent {
   };
 
   _handleMeasure = (name: string, x: Object) => {
-    var {width, height} = x.nativeEvent.layout;
-    var size = {width: width, height: height};
+    var { width, height } = x.nativeEvent.layout;
+    var size = { width: width, height: height };
 
     var storeName = `_${name}`;
     var currentSize = this[storeName];
@@ -412,12 +532,12 @@ export default class Slider extends PureComponent {
   };
 
   _setCurrentValueAnimated = (value: number) => {
-    var animationType   = this.props.animationType;
+    var animationType = this.props.animationType;
     var animationConfig = Object.assign(
       {},
       DEFAULT_ANIMATION_CONFIGS[animationType],
       this.props.animationConfig,
-      {toValue : value}
+      { toValue: value }
     );
 
     Animated[animationType](this.state.value, animationConfig).start();
@@ -443,7 +563,7 @@ export default class Slider extends PureComponent {
   };
 
   _getTouchOverflowStyle = () => {
-    var {width, height} = this._getTouchOverflowSize();
+    var { width, height } = this._getTouchOverflowSize();
 
     var touchOverflowStyle = {};
     if (width !== undefined && height !== undefined) {
@@ -501,7 +621,7 @@ export default class Slider extends PureComponent {
   };
 
   _renderThumbImage = () => {
-    var {thumbImage} = this.props;
+    var { thumbImage } = this.props;
 
     if (!thumbImage) return;
 
@@ -536,5 +656,18 @@ var defaultStyles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'green',
     opacity: 0.5,
+  },
+  rightTrackDownView: {
+    flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "flex-end"
+  },
+  customBackground: {
+    height: 40,
+    top: 10,
+    backgroundColor: "#F0F2F5"
+  },
+  trackCustom: {
+    height: TRACK_SIZE,
   }
 });

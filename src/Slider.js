@@ -292,6 +292,14 @@ export default class Slider extends PureComponent {
       ...valueVisibleStyle
     };
 
+
+    var maximumTrackStyle = {
+      position: 'absolute',
+      width: Animated.add(thumbRight, thumbSize.width / 2),
+      backgroundColor: maximumTrackTintColor,
+      ...valueVisibleStyle
+    };
+
     var touchOverflowStyle = this._getTouchOverflowStyle();
 
     var visibility = null
@@ -364,10 +372,12 @@ export default class Slider extends PureComponent {
     } else {
       visibility = (
         <View>
-          <View
-            style={[{ backgroundColor: maximumTrackTintColor, }, mainStyles.track, trackStyle]}
-            renderToHardwareTextureAndroid={true}
-            onLayout={this._measureTrack} />
+          <View style={[defaultStyles.rightTrackView]}>
+            <Animated.View
+              renderToHardwareTextureAndroid={true}
+              style={[mainStyles.track, trackStyle, maximumTrackStyle]}
+              onLayout={this._measureTrack} />
+          </View>
           <Animated.View
             renderToHardwareTextureAndroid={true}
             style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
@@ -661,6 +671,10 @@ var defaultStyles = StyleSheet.create({
     flex: 1,
     alignItems: "flex-end",
     justifyContent: "flex-end"
+  },
+  rightTrackView: {
+    flex: 1,
+    alignItems: "flex-end",
   },
   customBackground: {
     height: 40,

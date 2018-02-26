@@ -273,7 +273,7 @@ export default class Slider extends PureComponent {
     var mainStyles = styles || defaultStyles;
     var thumbLeft = value.interpolate({
       inputRange: [minimumValue, maximumValue],
-      outputRange: [0, containerSize.width - thumbSize.width],
+      outputRange: [0, containerSize.width - thumbSize.width ],
       //extrapolate: 'clamp',
     });
     var thumbRight = value.interpolate({
@@ -311,21 +311,23 @@ export default class Slider extends PureComponent {
     var leftCustom = {
       height: isCustomMinMaxStyle.minStyle.height || 20,
       opacity: isCustomMinMaxStyle.minStyle.opacity || 1,
-      top: 28
+      top: 18
     }
 
     var isCustomMinMaxStyle = {
       isVisible: isCustomMinMaxStyle.isVisible || false,
       minStyle: {
         position: 'absolute',
-        width: Animated.add(thumbLeft, thumbSize.width / 2),
+        width: Animated.add(thumbLeft, 8 - (thumbSize.width / 2)),
         backgroundColor: minimumTrackTintColor,
+        borderBottomLeftRadius: 5,
         ...leftCustom
       },
       maxStyle: {
         position: 'absolute',
-        width: Animated.add(thumbRight, thumbSize.width / 2),
+        width: Animated.add(thumbRight, 8 - (thumbSize.width / 2)),
         backgroundColor: maximumTrackTintColor,
+        borderBottomRightRadius: 5,
         ...rightCustom
       }
     }
@@ -340,7 +342,7 @@ export default class Slider extends PureComponent {
 
     if (isCustomMinMaxStyle.isVisible) {
       visibility = (
-        <View>
+        <View style={{backgroundColor: "", boxSizing: 'border-box', borderWidth: 8, borderStyle: 'solid', borderColor: 'transparent'}}>
           <View style={[defaultStyles.customBackground]} />
           <View style={[defaultStyles.rightTrackDownView]}>
             <Animated.View
@@ -389,7 +391,6 @@ export default class Slider extends PureComponent {
       <View {...other} style={[mainStyles.container, style]} onLayout={this._measureContainer}>
 
         {visibility}
-
         <Animated.View
           onLayout={this._measureThumb}
           renderToHardwareTextureAndroid={true}
@@ -677,9 +678,10 @@ var defaultStyles = StyleSheet.create({
     alignItems: "flex-end",
   },
   customBackground: {
-    height: 40,
-    top: 10,
-    backgroundColor: "#F0F2F5"
+    height: 30,
+    //top: 10,
+    backgroundColor: "#F0F2F5",
+    borderRadius: 5
   },
   trackCustom: {
     height: TRACK_SIZE,
